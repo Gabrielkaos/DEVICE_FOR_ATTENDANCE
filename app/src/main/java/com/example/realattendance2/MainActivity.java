@@ -2,9 +2,14 @@ package com.example.realattendance2;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.ConnectivityManager;
+import android.net.LinkAddress;
+import android.net.LinkProperties;
+import android.net.Network;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
@@ -24,6 +29,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.Inet4Address;
 import java.net.URL;
 
 public class MainActivity extends AppCompatActivity {
@@ -31,6 +37,7 @@ public class MainActivity extends AppCompatActivity {
     private String SERVER_URL;
     private String DEVICE_NAME;
     private static final String TOKEN = "ANDROID_SECRET";
+    private TextView displayNameText, apiUrlText, ipAddressText;
 
     TextView statusText;
 
@@ -44,8 +51,21 @@ public class MainActivity extends AppCompatActivity {
 
         loadConfig();
 
+
         statusText = findViewById(R.id.statusText);
         Button scanBtn = findViewById(R.id.scanBtn);
+        displayNameText = findViewById(R.id.deviceName);
+        apiUrlText = findViewById(R.id.apiUrl);
+        ipAddressText = findViewById(R.id.ip_address);
+
+        if(!DEVICE_NAME.isEmpty()){
+            displayNameText.setText(DEVICE_NAME);
+        }
+        if(!SERVER_URL.isEmpty()){
+            apiUrlText.setText(SERVER_URL);
+        }
+
+        ipAddressText.setText(getDeviceIpAddress());
 
         scanBtn.setOnClickListener(v -> startScanner());
 
@@ -55,7 +75,8 @@ public class MainActivity extends AppCompatActivity {
             saveConfig(deviceName, apiEndpoint);
 
             // Update UI (must be on UI thread)
-//            runOnUiThread(() -> deviceNameText.setText(deviceName));
+            runOnUiThread(() -> displayNameText.setText(deviceName));
+            runOnUiThread(() -> apiUrlText.setText(apiEndpoint));
         });
 
         try {
@@ -155,8 +176,31 @@ public class MainActivity extends AppCompatActivity {
         IntentIntegrator integrator = new IntentIntegrator(this);
         integrator.setPrompt("Scan Student ID");
         integrator.setBeepEnabled(true);
-        integrator.setOrientationLocked(false); // IMPORTANT
+
         integrator.setOrientationLocked(true);
+
+        // Force portrait by setting camera orientation hint (ZXing supports it)
+        integrator.setCaptureActivity(PortraitCaptureActivity.class);
         integrator.initiateScan();
+    }
+
+    private String getDeviceIpAddress() {
+        ConnectivityManager cm =
+                (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+
+        if (cm == null) return "No network";
+
+        Network network = cm.getActiveNetwork();
+        if (network == null) return "No connection";
+
+        LinkProperties linkProperties = cm.getLinkProperties(network);
+        if (linkProperties == null) return "No IP";
+
+        for (LinkAddress linkAddress : linkProperties.getLinkAddresses()) {
+            if (linkAddress.getAddress() instanceof Inet4Address) {
+                return linkAddress.getAddress().getHostAddress();
+            }
+        }
+        return "IP not found";
     }
 }
