@@ -33,6 +33,7 @@ android {
 
 dependencies {
 
+    implementation("org.nanohttpd:nanohttpd:2.3.1")
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.activity)

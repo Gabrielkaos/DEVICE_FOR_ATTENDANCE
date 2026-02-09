@@ -1,7 +1,9 @@
 package com.example.realattendance2;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.TextView;
 
@@ -17,6 +19,7 @@ import com.google.zxing.integration.android.IntentResult;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
@@ -25,11 +28,13 @@ import java.net.URL;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final String SERVER_URL = "http://192.168.1.23:8000/api/";
-    private static final String DEVICE_NAME = "ANDROID_DEVICE_01";
+    private String SERVER_URL;
+    private String DEVICE_NAME;
     private static final String TOKEN = "ANDROID_SECRET";
 
     TextView statusText;
+
+    private ConfigServer server;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,10 +42,27 @@ public class MainActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
 
+        loadConfig();
+
         statusText = findViewById(R.id.statusText);
         Button scanBtn = findViewById(R.id.scanBtn);
 
         scanBtn.setOnClickListener(v -> startScanner());
+
+        server = new ConfigServer(8080, (deviceName, apiEndpoint) -> {
+
+            // Save config locally
+            saveConfig(deviceName, apiEndpoint);
+
+            // Update UI (must be on UI thread)
+//            runOnUiThread(() -> deviceNameText.setText(deviceName));
+        });
+
+        try {
+            server.start();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -59,11 +81,32 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void saveConfig(String deviceName, String apiEndpoint) {
+        SharedPreferences prefs =
+                getSharedPreferences("device_config", MODE_PRIVATE);
+
+        prefs.edit()
+                .putString("device_name", deviceName)
+                .putString("api_endpoint", apiEndpoint)
+                .apply();
+    }
+
+    private void loadConfig() {
+        SharedPreferences prefs =
+                getSharedPreferences("device_config", MODE_PRIVATE);
+
+        DEVICE_NAME = prefs.getString("device_name", "Unconfigured Device");
+        SERVER_URL  = prefs.getString("api_endpoint", null);
+    }
+
+
     private void sendAttendance(String studentId) {
         statusText.setText("Sending...");
 
         new Thread(() -> {
             try {
+                Log.d("SERVER_URL",SERVER_URL);
+                Log.d("DEVICE_NAME",DEVICE_NAME);
                 URL url = new URL(SERVER_URL);
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("POST");
@@ -108,6 +151,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startScanner() {
+        loadConfig();
         IntentIntegrator integrator = new IntentIntegrator(this);
         integrator.setPrompt("Scan Student ID");
         integrator.setBeepEnabled(true);
