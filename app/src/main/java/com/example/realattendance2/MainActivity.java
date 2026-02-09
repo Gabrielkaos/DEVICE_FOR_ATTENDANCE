@@ -25,7 +25,7 @@ import java.net.URL;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final String SERVER_URL = "http://192.168.1.23:8000/api_attendance";
+    private static final String SERVER_URL = "http://192.168.1.23:8000/api/";
     private static final String DEVICE_NAME = "ANDROID_DEVICE_01";
     private static final String TOKEN = "ANDROID_SECRET";
 
@@ -111,6 +111,7 @@ public class MainActivity extends AppCompatActivity {
         IntentIntegrator integrator = new IntentIntegrator(this);
         integrator.setPrompt("Scan Student ID");
         integrator.setBeepEnabled(true);
+        integrator.setOrientationLocked(false); // IMPORTANT
         integrator.setOrientationLocked(true);
         integrator.initiateScan();
     }
