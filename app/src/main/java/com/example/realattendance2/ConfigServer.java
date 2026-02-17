@@ -13,14 +13,21 @@ import java.util.Map;
 public class ConfigServer extends NanoHTTPD {
 
     private final ConfigListener listener;
+    private String storedDeviceName;
+
 
     public interface ConfigListener {
         void onConfigReceived(String deviceName, String apiEndpoint);
     }
 
-    public ConfigServer(int port, ConfigListener listener) {
+    public ConfigServer(int port, String storedDeviceName, ConfigListener listener) {
         super(port);
         this.listener = listener;
+        this.storedDeviceName = storedDeviceName;
+    }
+
+    public void setStoredDeviceName(String storedDeviceName){
+        this.storedDeviceName = storedDeviceName;
     }
 
     @Override
@@ -41,12 +48,14 @@ public class ConfigServer extends NanoHTTPD {
 
                 JSONObject json = new JSONObject(body);
                 String deviceName2 = json.getString("device_name");
+                if(deviceName2.equals(storedDeviceName)){
+                    return newFixedLengthResponse(
+                            Response.Status.OK,
+                            "text/plain",
+                            "pong"
+                    );
+                }
 
-                return newFixedLengthResponse(
-                        Response.Status.OK,
-                        "text/plain",
-                        "pong"
-                );
 
 
             } catch (Exception e) {
